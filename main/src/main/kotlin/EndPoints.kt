@@ -1,5 +1,6 @@
 enum class EndPoints(val path: String, val className: String, val funName: String) {
-    TEST1("/api/v3", "TestController", "getMeth");
+    TEST1("/api/v3", "TestController", "getMeth"),
+    TEST2("/api/v4", "TestController", "getMethod");
 //    TEST2("/api/v2", "testController2");
 
 

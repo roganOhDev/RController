@@ -1,6 +1,7 @@
 package Controller
 
 import dto.TestDto
+import exception.HttpException
 import rController.RController
 import rController.RGet
 import util.RequestParams
@@ -13,8 +14,14 @@ class TestController {
     }
 
     @RGet("/v4" , "TestController")
-    fun getMethod(requestParams: Any) : TestDto {
-        val request = requestParams as RequestParams
-        return TestDto("dto")
+    fun getMethod(requestParams: Any?) : TestDto {
+        val request = RequestParams(requestParams as Map<String, String>)
+        val name = request.requests["name"]?:"unknown"
+
+        if (name.isBlank()) {
+            throw HttpException("name required")
+        }
+
+        return TestDto(name)
     }
 }

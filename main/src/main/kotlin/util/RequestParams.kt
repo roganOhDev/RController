@@ -1,4 +1,4 @@
 package util
 
-class RequestParams(requests: Map<String, String>) {
+class RequestParams(val requests: Map<String, String>) {
 }

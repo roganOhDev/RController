@@ -77,50 +77,71 @@ class HandlerBridge : HttpHandler {
 
     private fun handleGet(method: KCallable<*>?, obj: Any?, exchange: HttpExchange) {
         try {
-            val response : Any?
+            val response: Any?
             if (exchange.requestURI.query == null) {
                 response = method!!.call(obj)
             } else {
-                response = method!!.call(obj, exchange)
+                val query = getQueryParameters(exchange.requestURI.query)
+                response = method!!.call(obj, query)
             }
 
             val gson = GsonBuilder().setPrettyPrinting().create()
             val gsonPretty = gson.toJson(response)
 
-            try {
-                val sb = StringBuilder()
-                sb.append("<!DOCTYPE html>")
-                sb.append("<html>")
-                sb.append("<head>")
-                sb.append("<meta charset=\"UTF-8\">")
-                sb.append("<title>Title</title>")
-                sb.append("</head>")
-                sb.append("<body>")
-                sb.append("<li><a href=\"basic.html\">$gsonPretty</a></li>")
-                sb.append("</body>")
-                sb.append("</html>")
+            val sb = StringBuilder()
+            sb.append("<!DOCTYPE html>")
+            sb.append("<html>")
+            sb.append("<head>")
+            sb.append("<meta charset=\"UTF-8\">")
+            sb.append("<title>Title</title>")
+            sb.append("</head>")
+            sb.append("<body>")
+            sb.append("<li><a href=\"basic.html\">$gsonPretty</a></li>")
+            sb.append("</body>")
+            sb.append("</html>")
 
-                val byteBuffer = Charset.forName("UTF-8").encode(sb.toString())
-                val contentLength = byteBuffer.limit()
-                val content = ByteArray(contentLength)
-                byteBuffer.get(content, 0, contentLength)
+            val byteBuffer = Charset.forName("UTF-8").encode(sb.toString())
+            val contentLength = byteBuffer.limit()
+            val content = ByteArray(contentLength)
+            byteBuffer.get(content, 0, contentLength)
 
-                val headers = exchange.responseHeaders
-                headers.add("Content-Type", "text/html;charset=UTF-8")
+            val headers = exchange.responseHeaders
+            headers.add("Content-Type", "text/html;charset=UTF-8")
 
-                exchange.sendResponseHeaders(200, contentLength.toLong())
+            exchange.sendResponseHeaders(200, contentLength.toLong())
 
-                exchange.responseBody.write(content)
-            } catch (e: java.lang.Exception) {
-                e.printStackTrace()
-            } finally {
-                exchange.close()
-            }
+            exchange.responseBody.write(content)
 
             println(gsonPretty.toString())
 
         } catch (e: Exception) {
-            println(e)
+            val sb = StringBuilder()
+            sb.append("<!DOCTYPE html>")
+            sb.append("<html>")
+            sb.append("<head>")
+            sb.append("<meta charset=\"UTF-8\">")
+            sb.append("<title>Title</title>")
+            sb.append("</head>")
+            sb.append("<body>")
+            sb.append("<li><a href=\"basic.html\">500 500 500 : ${e.cause?.message}</a></li>")
+            sb.append("</body>")
+            sb.append("</html>")
+            println(e.printStackTrace())
+
+            val byteBuffer = Charset.forName("UTF-8").encode(sb.toString())
+            val contentLength = byteBuffer.limit()
+            val content = ByteArray(contentLength)
+            byteBuffer.get(content, 0, contentLength)
+
+            val headers = exchange.responseHeaders
+            headers.add("Content-Type", "text/html;charset=UTF-8")
+
+            exchange.sendResponseHeaders(200, contentLength.toLong())
+
+            exchange.responseBody.write(content)
+
+        } finally {
+            exchange.close()
         }
     }
 
