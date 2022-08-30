@@ -3,19 +3,13 @@ import exception.ProcessorException
 import com.google.auto.service.AutoService
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.metadata.KotlinPoetMetadataPreview
-import com.sun.net.httpserver.HttpExchange
-import com.sun.net.httpserver.HttpHandler
+import rController.RGet
 import java.io.File
-import java.nio.charset.Charset
 import javax.annotation.processing.AbstractProcessor
 import javax.annotation.processing.Processor
 import javax.annotation.processing.RoundEnvironment
 import javax.annotation.processing.SupportedAnnotationTypes
-import javax.lang.model.element.Element
-import javax.lang.model.element.ElementKind
-import javax.lang.model.element.TypeElement
-
-private val funSpecs: MutableList<FunSpec> = mutableListOf()
+import javax.lang.model.element.*
 
 @KotlinPoetMetadataPreview
 @AutoService(Processor::class)
@@ -24,104 +18,111 @@ class RControllerProcessor : AbstractProcessor() {
     override fun process(annotations: MutableSet<out TypeElement>?, roundEnv: RoundEnvironment?): Boolean {
         try {
             if (roundEnv != null) {
-                roundEnv.getElementsAnnotatedWith(RController::class.java)?.forEach {
-                    val elementPackage = processingEnv.elementUtils.getPackageOf(it).toString()
-                    val className = it.simpleName.toString()
 
+                val funElementHashMap = HashMap<String, MutableList<Element>>()
+                val classElementHashMap = HashMap<String, ElementPair>()  // className, class , fun
+
+                roundEnv.getElementsAnnotatedWith(RGet::class.java)?.forEach {
+                    if (it.kind != ElementKind.METHOD) {
+                        throw  ProcessorException("RController must be used only on controller")
+                    }
+
+                    val className = it.getAnnotation(RGet::class.java).className
+
+                    if (funElementHashMap[className] == null) {
+                        funElementHashMap[className] = mutableListOf()
+                    }
+
+                    funElementHashMap[className]!!.add(it)
+
+                }
+
+                roundEnv.getElementsAnnotatedWith(RController::class.java)?.forEach {
                     if (it.kind != ElementKind.CLASS) {
                         throw  ProcessorException("RController must be used only on controller")
                     }
 
-                    println("Processing: $elementPackage.$className")
-                    generateFile(it as Element)
-//                    funSpecs.add(makeMyInfoPrintClass(it as Element))
-//                    funSpecs.add(generateFun(it as TypeElement))
+                    val className = it.simpleName.toString()
+
+                    if (classElementHashMap[className] == null) {
+                        classElementHashMap[className] = ElementPair(classElement = it)
+                    }
+
+                    if (funElementHashMap[className] != null) {
+                        classElementHashMap[className]!!.funElements.addAll(funElementHashMap[className]!!)
+                    }
                 }
+
+                classElementHashMap.forEach { (_, funElements) ->
+                    generateFile(funElements.classElement, funElements.funElements.toList())
+                }
+
             }
         } catch (e: ProcessorException) {
             return false
         }
+
         return true
     }
 
-    private fun generateFile(element: Element) {
-        val testFileBuilder = generateFunction(element)
+    private fun generateFile(classElement: Element, funElements: List<Element>) {
+        val fileBuilder = generateFunction(classElement, funElements)
 
         val kaptKotlinGeneratedDir = processingEnv.options["kapt.kotlin.generated"]!!
-        testFileBuilder.writeTo(File(kaptKotlinGeneratedDir))
+        fileBuilder.writeTo(File(kaptKotlinGeneratedDir))
     }
 
-    private fun generateFunction(element: Element): FileSpec {
-        val newFunction = FunSpec.builder("_" + element.simpleName.toString().lowerCaseFirst())
-        val rControllerClass = element.getAnnotation(RController::class.java)
-        rControllerClass.run {
-            newFunction.addStatement("println(%P)", "path : ${this.path}")
-        }
+    private fun generateFunction(classElement: Element, funElements: List<Element>): FileSpec {
+        val fileBuilder = FileSpec.builder("Handler", classElement.simpleName.toString().lowerCaseFirst())
 
-        val handleFunction = FunSpec.builder("handle")
-        val aa = element.getAnnotation(RController::class.java)
-        aa.run {
-            handleFunction.addCode(
-                """
-                val responseBody = exchange!!.responseBody
+        val type = addType(classElement, funElements)
 
-        try {
-            val sb = StringBuilder()
-            sb.append("<!DOCTYPE html>")
-            sb.append("<html>")
-            sb.append("<head>")
-            sb.append("<meta charset=\"UTF-8\">")
-            sb.append("<title>Title</title>")
-            sb.append("</head>")
-            sb.append("<body>")
-            sb.append("<ul>")
-            sb.append("<li><a href=\"basic.html\">page page page</a></li>")
-            sb.append("</ul>")
-            sb.append("</body>")
-            sb.append("</html>")
+        return fileBuilder.addType(type).build()
 
-            val byteBuffer = Charset.forName("UTF-8").encode(sb.toString())
-            val contentLength = byteBuffer.limit()
-            val content = ByteArray(contentLength)
-            byteBuffer.get(content, 0, contentLength)
+    }
 
-            val headers = exchange.responseHeaders
-            headers.add("Content-Type", "text/html;charset=UTF-8")
-
-            exchange.sendResponseHeaders(200, contentLength.toLong())
-
-            responseBody.write(content)
-        } catch (e:Exception){
-            e.printStackTrace()
-        } finally {
-            exchange.close()
-        }
-            """.trimIndent()
-            )
-        }
-
-
-        return FileSpec.builder("Test", element.simpleName.toString().lowerCaseFirst()) // 파일이름 설정
-//            .addImport(Charset::class.java)
-            .addAliasedImport(Charset::class.java, "Charset")
-            .addType(
-                TypeSpec.classBuilder(element.simpleName.toString())
-                    .addSuperinterface(HttpHandler::class)
-                    .primaryConstructor(
-                        FunSpec.constructorBuilder()
-                            .build()
-                    )
-                    .addFunction(newFunction.build())
-                    .addFunction(
-                        handleFunction
-                            .addModifiers(KModifier.OVERRIDE)
-                            .addParameter("exchange", HttpExchange::class)
-                            .build()
-                    )
+    private fun addType(classElement: Element, funElements: List<Element>): TypeSpec {
+        val type = TypeSpec.classBuilder(classElement.simpleName.toString())
+            .primaryConstructor(
+                FunSpec.constructorBuilder()
                     .build()
-
             )
-            .build()
+
+        val functions = addFunctions(classElement, funElements)
+
+        return type.addFunctions(functions).build()
+    }
+
+    private fun addFunctions(classElement: Element, funElements: List<Element>): List<FunSpec> {
+        val response = mutableListOf<FunSpec>()
+
+        for (funElement in funElements) {
+            val parameterList =  (funElement as ExecutableElement).parameters.map {
+                it -> it.simpleName.toString()
+            }.joinToString { it }
+            val functionBuilder = FunSpec.builder(funElement.simpleName.toString())
+                .addCode("""
+                    val clazz = ${classElement.getAnnotation(RController::class.java).packagePath}.${classElement.simpleName}()
+                    return clazz.${funElement.simpleName}($parameterList)""".trimIndent())
+//                .returns((funElement as ExecutableElement).returnType::class.java)
+                .returns(ANY)
+
+            val parameters = addParameters(funElement)
+
+            val function = functionBuilder.addParameters(parameters).build()
+            response.add(function)
+        }
+
+        return response
+    }
+
+    private fun addParameters(funElement: Element): List<ParameterSpec> {
+        val response = mutableListOf<ParameterSpec>()
+        (funElement as ExecutableElement).parameters.forEach{
+            parameter -> response.add(ParameterSpec.builder(parameter.simpleName.toString(), Any::class).build())
+        }
+
+        return response
     }
 
     private fun String.lowerCaseFirst(): String {

@@ -2,7 +2,7 @@ package Controller
 
 import rController.RController
 
-@RController("api/v2/v2")
+@RController("api/v3/v2" ,"Controller")
 class TestController2 {
 
 }

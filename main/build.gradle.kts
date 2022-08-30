@@ -9,6 +9,7 @@ version = "1.0-SNAPSHOT"
 
 dependencies {
     testImplementation(kotlin("test"))
+    implementation ("com.google.code.gson:gson:2.8.5")
 
     implementation(project(":annotation"))
     kapt (project(":processor"))

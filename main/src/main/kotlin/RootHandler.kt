@@ -1,11 +1,10 @@
 import com.sun.net.httpserver.HttpExchange
-import com.sun.net.httpserver.HttpHandler
 import java.lang.Exception
 import java.nio.charset.Charset
 
-class RootHandler : HttpHandler {
-    override fun handle(exchange: HttpExchange?) {
-        val responseBody = exchange!!.responseBody
+class RootHandler {
+    fun handle(exchange: HttpExchange){
+        val responseBody = exchange.responseBody
 
         try {
             val sb = StringBuilder()
@@ -33,11 +32,10 @@ class RootHandler : HttpHandler {
             exchange.sendResponseHeaders(200, contentLength.toLong())
 
             responseBody.write(content)
-        } catch (e:Exception){
+        } catch (e: Exception) {
             e.printStackTrace()
         } finally {
             exchange.close()
         }
     }
-
 }
