@@ -2,6 +2,7 @@ import com.google.gson.GsonBuilder
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpHandler
 import exception.HttpException
+import exception.NotFoundEndPoint
 import java.nio.charset.Charset
 import kotlin.Exception
 import kotlin.reflect.KCallable
@@ -41,22 +42,7 @@ class HandlerBridge : HttpHandler {
 
         } else {
             try {
-                val sb = StringBuilder()
-                sb.append("<!DOCTYPE html>")
-                sb.append("<html>")
-                sb.append("<head>")
-                sb.append("<meta charset=\"UTF-8\">")
-                sb.append("<title>Title</title>")
-                sb.append("</head>")
-                sb.append("<body>")
-                sb.append("<li><a href=\"basic.html\">404 404 404</a></li>")
-                sb.append("</body>")
-                sb.append("</html>")
-
-                val byteBuffer = Charset.forName("UTF-8").encode(sb.toString())
-                val contentLength = byteBuffer.limit()
-                val content = ByteArray(contentLength)
-                byteBuffer.get(content, 0, contentLength)
+                val (content, contentLength) = NotFoundEndPoint().notFound()
 
                 val headers = exchange.responseHeaders
                 headers.add("Content-Type", "text/html;charset=UTF-8")
@@ -64,7 +50,7 @@ class HandlerBridge : HttpHandler {
                 exchange.sendResponseHeaders(404, contentLength.toLong())
 
                 exchange.responseBody.write(content)
-            } catch (e: java.lang.Exception) {
+            } catch (e: Exception) {
                 e.printStackTrace()
             } finally {
                 exchange.close()

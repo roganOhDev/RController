@@ -24,7 +24,7 @@ class RControllerProcessor : AbstractProcessor() {
 
                 roundEnv.getElementsAnnotatedWith(RGet::class.java)?.forEach {
                     if (it.kind != ElementKind.METHOD) {
-                        throw  ProcessorException("RController must be used only on controller")
+                        throw  ProcessorException("RGet must be used only on method")
                     }
 
                     val className = it.getAnnotation(RGet::class.java).className
@@ -34,6 +34,7 @@ class RControllerProcessor : AbstractProcessor() {
                     }
 
                     funElementHashMap[className]!!.add(it)
+                    //TODO : 느낌표
 
                 }
 

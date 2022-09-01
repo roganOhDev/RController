@@ -1,2 +1,10 @@
 .env
-.idea
+.idea/
+build/
+lib/
+*.swp
+debug.log
+*debug.log
+.vscode/
+.gradle
+/build/
