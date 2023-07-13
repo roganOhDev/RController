@@ -7,4 +7,4 @@ debug.log
 *debug.log
 .vscode/
 .gradle
-/build/
+**/build/
